@@ -7,11 +7,13 @@ const getWallet = (args) => {
   return JSON.parse(fs.readFileSync(wallet_option, { encoding: "utf8" }));
 };
 
-const uploadMetadata = async (filename_no_ext, image_url) => {
+const uploadMetadata = async (filename_no_ext, image_url, video_url) => {
   const data = fs.readJSONSync(`./metadata/${filename_no_ext}.json`);
 
   data.image = image_url;
   data.properties.files[0].uri = image_url;
+  data.animation_url = video_url;
+  data.properties.files[1].uri = video_url;
 
   // write and read back the metadata
   fs.writeJSONSync(`./metadata/${filename_no_ext}.json`, data);
@@ -28,8 +30,10 @@ const parseArgs = () => {
 const runUploadWithWallet = async (wallet, bundlr) => {
   const image_filenames = fs.readdirSync(imageFolder);
 
-  for (i = 0; i < image_filenames.length; i++) {
-    const no_ext_filename = image_filenames[i]
+  Promise.all(
+    image_filenames.map(async (item, i) => {
+    console.log(i)
+    const no_ext_filename = item
       .split(".")
       .slice(0, -1)
       .join(".");
@@ -50,7 +54,7 @@ const runUploadWithWallet = async (wallet, bundlr) => {
 
     if (typeof imageUrl === "string") {
       // push metadata to arweave by way of bundlr
-      await uploadMetadata(no_ext_filename);
+      await uploadMetadata(no_ext_filename, imageUrl, videoUrl);
 
       const respMeta = await bundlr.uploader.uploadFile(
         `./metadata/${no_ext_filename}.json`
@@ -64,7 +68,9 @@ const runUploadWithWallet = async (wallet, bundlr) => {
       console.log(metaUrl);
     }
   }
-};
+  )
+  );
+}
 
 const runUpload = async () => {
   args = parseArgs();
